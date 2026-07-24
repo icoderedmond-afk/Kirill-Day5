@@ -31,27 +31,21 @@ const ctx = canvas.getContext("2d");
 const WIDTH = canvas.width;
 const HEIGHT = canvas.height;
 
-// ------------------------------
-// DIFFICULTY SYSTEM
-// ------------------------------
-let difficulty = "easy"; // default
-
+// Difficulty
+let difficulty = "easy";
 const DIFF = {
-  easy:   { botSpeed: 0.6, shootPower: 2.5, chaseAggro: 0.5 },
-  medium: { botSpeed: 1.0, shootPower: 3.5, chaseAggro: 0.8 },
-  hard:   { botSpeed: 1.6, shootPower: 5.0, chaseAggro: 1.2 }
+  easy:   { botSpeed: 0.6, shootPower: 2.5 },
+  medium: { botSpeed: 1.0, shootPower: 3.5 },
+  hard:   { botSpeed: 1.6, shootPower: 5.0 }
 };
 
-// Change difficulty with keys 1,2,3
 window.addEventListener("keydown", (e) => {
   if (e.code === "Digit1") difficulty = "easy";
   if (e.code === "Digit2") difficulty = "medium";
   if (e.code === "Digit3") difficulty = "hard";
 });
 
-// ------------------------------
-// GAME STATE
-// ------------------------------
+// Game state
 let blueScore = 0;
 let redScore = 0;
 let period = 1;
@@ -61,16 +55,12 @@ let gameRunning = false;
 let faceoffReady = true;
 let puckOwner = "none";
 
-// ------------------------------
-// RINK
-// ------------------------------
+// Rink
 const goalWidth = 80;
 const goalHeight = 160;
 const goalOffsetY = (HEIGHT - goalHeight) / 2;
 
-// ------------------------------
-// PLAYERS
-// ------------------------------
+// Players
 const playerSpeed = 1.8;
 
 const bluePlayer = {
@@ -93,9 +83,7 @@ const redPlayer = {
   color: "#ff3333"
 };
 
-// ------------------------------
-// PUCK
-// ------------------------------
+// Puck
 const puck = {
   x: WIDTH / 2,
   y: HEIGHT / 2,
@@ -106,9 +94,7 @@ const puck = {
   maxSpeed: 7
 };
 
-// ------------------------------
-// INPUT
-// ------------------------------
+// Input
 const keys = {};
 window.addEventListener("keydown", (e) => {
   keys[e.code] = true;
@@ -123,23 +109,66 @@ function updateInput() {
   bluePlayer.right = keys["KeyD"];
 }
 
-// ------------------------------
-// DRAW PLAYER WITH REALISTIC STICK
-// ------------------------------
+// Draw player + semi-realistic Warrior helmet + NHL stick
 function drawHockeyPlayer(p) {
   ctx.save();
   ctx.translate(p.x, p.y);
 
-  // Helmet
-  ctx.fillStyle = "#ffffff";
+  // SEMI-REALISTIC WARRIOR COVERT HELMET (SHAPE-BASED)
+  ctx.fillStyle = "#f5f5f5";
   ctx.beginPath();
-  ctx.arc(0, -32, 12, 0, Math.PI * 2);
+  ctx.moveTo(-18, -40);
+  ctx.quadraticCurveTo(0, -48, 18, -40);
+  ctx.quadraticCurveTo(20, -30, 18, -22);
+  ctx.quadraticCurveTo(0, -18, -18, -22);
+  ctx.quadraticCurveTo(-20, -30, -18, -40);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = "#d0d0d0";
+  ctx.beginPath();
+  ctx.moveTo(-14, -36);
+  ctx.quadraticCurveTo(-8, -38, -4, -36);
+  ctx.quadraticCurveTo(-8, -34, -14, -36);
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.moveTo(4, -36);
+  ctx.quadraticCurveTo(8, -38, 14, -36);
+  ctx.quadraticCurveTo(8, -34, 4, -36);
+  ctx.fill();
+
+  ctx.strokeStyle = "#c0c0c0";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(-16, -38);
+  ctx.quadraticCurveTo(0, -44, 16, -38);
+  ctx.stroke();
+
+  ctx.fillStyle = "#e0e0e0";
+  ctx.beginPath();
+  ctx.moveTo(-10, -24);
+  ctx.quadraticCurveTo(0, -16, 10, -24);
+  ctx.quadraticCurveTo(0, -20, -10, -24);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = "#f5f5f5";
+  ctx.beginPath();
+  ctx.ellipse(-14, -30, 5, 7, 0, 0, Math.PI * 2);
+  ctx.ellipse(14, -30, 5, 7, 0, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.fillStyle = p.color;
-  ctx.fillRect(-12, -38, 24, 6);
+  ctx.beginPath();
+  ctx.moveTo(-18, -36);
+  ctx.quadraticCurveTo(0, -42, 18, -36);
+  ctx.lineTo(18, -32);
+  ctx.quadraticCurveTo(0, -38, -18, -32);
+  ctx.closePath();
+  ctx.fill();
 
-  // Jersey
+  // BODY
   ctx.fillStyle = p.color;
   ctx.fillRect(-14, -20, 28, 42);
 
@@ -157,32 +186,51 @@ function drawHockeyPlayer(p) {
   ctx.fillRect(-16, 22, 12, 6);
   ctx.fillRect(4, 22, 12, 6);
 
-  // REALISTIC HOCKEY STICK
+  // REALISTIC NHL STICK (RIGHT-HANDED, LEFT-CURVE BLADE)
   const angle = Math.atan2(puck.y - p.y, puck.x - p.x);
   ctx.rotate(angle);
 
-  // Shaft
-  ctx.fillStyle = "#8b5a2b";
-  ctx.fillRect(15, -4, 70, 8);
+  // Shaft (tapered, extended to meet blade)
+  ctx.fillStyle = "#3b2f2f";
+  ctx.beginPath();
+  ctx.moveTo(18, -5);
+  ctx.lineTo(100, -3);
+  ctx.lineTo(100, 3);
+  ctx.lineTo(18, 5);
+  ctx.closePath();
+  ctx.fill();
 
   // Tape
   ctx.fillStyle = "#ffffff";
-  ctx.fillRect(15, -4, 15, 8);
-
-  // Curved blade
-  ctx.fillStyle = "#000";
   ctx.beginPath();
-  ctx.moveTo(85, -12);
-  ctx.quadraticCurveTo(105, 0, 85, 12);
+  ctx.moveTo(18, -5);
+  ctx.lineTo(32, -4);
+  ctx.lineTo(32, 4);
+  ctx.lineTo(18, 5);
   ctx.closePath();
   ctx.fill();
+
+  // LEFT-CURVE BLADE (PERFECTLY ATTACHED)
+  ctx.fillStyle = "#000";
+  ctx.beginPath();
+  ctx.moveTo(100, -8);                 // attach point
+  ctx.quadraticCurveTo(128, -2, 112, 16);
+  ctx.lineTo(100, 12);
+  ctx.quadraticCurveTo(120, 2, 100, -8);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.strokeStyle = "rgba(255,255,255,0.25)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(102, -5);
+  ctx.quadraticCurveTo(125, 0, 110, 12);
+  ctx.stroke();
 
   ctx.restore();
 }
 
-// ------------------------------
-// MOVEMENT
-// ------------------------------
+// Movement
 function movePlayers() {
   bluePlayer.vx = 0;
   bluePlayer.vy = 0;
@@ -205,9 +253,29 @@ function movePlayers() {
   pushBot();
 }
 
-// ------------------------------
-// BOT AI
-// ------------------------------
+// REAL PUSHING COLLISION
+function pushBot() {
+  const dx = redPlayer.x - bluePlayer.x;
+  const dy = redPlayer.y - bluePlayer.y;
+  const dist = Math.hypot(dx, dy);
+
+  const minDist = 40;
+
+  if (dist < minDist && dist > 0) {
+    const overlap = minDist - dist;
+    const nx = dx / dist;
+    const ny = dy / dist;
+
+    // Push NPC away
+    redPlayer.x += nx * overlap * 0.6;
+    redPlayer.y += ny * overlap * 0.6;
+
+    // Player recoil
+    bluePlayer.x -= nx * overlap * 0.3;
+    bluePlayer.y -= ny * overlap * 0.3;
+  }
+}
+
 function botAI() {
   const diff = DIFF[difficulty];
 
@@ -233,26 +301,6 @@ function botAI() {
   }
 }
 
-// ------------------------------
-// PUSH BOT
-// ------------------------------
-function pushBot() {
-  const dx = redPlayer.x - bluePlayer.x;
-  const dy = redPlayer.y - bluePlayer.y;
-  const dist = Math.hypot(dx, dy);
-
-  if (dist < 40) {
-    const nx = dx / dist;
-    const ny = dy / dist;
-
-    redPlayer.x += nx * 18;
-    redPlayer.y += ny * 18;
-  }
-}
-
-// ------------------------------
-// CLAMP PLAYER
-// ------------------------------
 function clampPlayer(p) {
   const margin = 25;
   if (p.x < margin) p.x = margin;
@@ -261,9 +309,7 @@ function clampPlayer(p) {
   if (p.y > HEIGHT - margin) p.y = HEIGHT - margin;
 }
 
-// ------------------------------
-// PUCK PHYSICS
-// ------------------------------
+// Puck physics
 function updatePuck() {
   puck.vx *= puck.friction;
   puck.vy *= puck.friction;
@@ -300,9 +346,6 @@ function updatePuck() {
   checkGoals();
 }
 
-// ------------------------------
-// COLLISION & POSSESSION
-// ------------------------------
 function handlePuckPlayerCollision(player, ownerTag) {
   const dx = puck.x - player.x;
   const dy = puck.y - player.y;
@@ -333,9 +376,7 @@ function handlePuckPlayerCollision(player, ownerTag) {
   }
 }
 
-// ------------------------------
-// GOALS
-// ------------------------------
+// Goals
 function checkGoals() {
   const inGoalY = puck.y > goalOffsetY && puck.y < goalOffsetY + goalHeight;
 
@@ -370,9 +411,7 @@ function startFaceoff() {
   gameRunning = true;
 }
 
-// ------------------------------
-// PERIOD TIMER
-// ------------------------------
+// Period timer
 setInterval(() => {
   if (gameRunning) {
     timer--;
@@ -389,18 +428,14 @@ setInterval(() => {
   }
 }, 1000);
 
-// ------------------------------
-// RINK DRAWING
-// ------------------------------
+// Rink
 function drawRink() {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, WIDTH, HEIGHT);
 
-  // FULL WHITE ICE
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
-  // Center red line
   ctx.strokeStyle = "#ff0000";
   ctx.lineWidth = 4;
   ctx.beginPath();
@@ -408,7 +443,6 @@ function drawRink() {
   ctx.lineTo(WIDTH / 2, HEIGHT);
   ctx.stroke();
 
-  // Blue lines
   ctx.strokeStyle = "#00aaff";
   ctx.lineWidth = 4;
   ctx.beginPath();
@@ -421,17 +455,14 @@ function drawRink() {
   ctx.lineTo(WIDTH * 0.75, HEIGHT);
   ctx.stroke();
 
-  // Center circle
   ctx.strokeStyle = "#0000ff";
   ctx.lineWidth = 3;
   ctx.beginPath();
   ctx.arc(WIDTH / 2, HEIGHT / 2, 60, 0, Math.PI * 2);
   ctx.stroke();
 
-  // Goal creases
   ctx.strokeStyle = "#00aaff";
   ctx.lineWidth = 3;
-
   ctx.beginPath();
   ctx.arc(20, HEIGHT / 2, 40, Math.PI / 2, -Math.PI / 2);
   ctx.stroke();
@@ -440,11 +471,9 @@ function drawRink() {
   ctx.arc(WIDTH - 20, HEIGHT / 2, 40, -Math.PI / 2, Math.PI / 2);
   ctx.stroke();
 
-  // Nets
   drawNet(0, goalOffsetY);
   drawNet(WIDTH - goalWidth, goalOffsetY);
 
-  // FACE OFF DOT — DRAW LAST
   ctx.strokeStyle = "#ff0000";
   ctx.lineWidth = 4;
   ctx.beginPath();
@@ -452,9 +481,6 @@ function drawRink() {
   ctx.stroke();
 }
 
-// ------------------------------
-// NET DRAWING
-// ------------------------------
 function drawNet(x, y) {
   ctx.save();
   ctx.translate(x, y);
@@ -484,9 +510,7 @@ function drawNet(x, y) {
   ctx.restore();
 }
 
-// ------------------------------
-// PUCK DRAW
-// ------------------------------
+// Puck draw
 function drawPuck() {
   ctx.fillStyle = "#000";
   ctx.beginPath();
@@ -494,9 +518,7 @@ function drawPuck() {
   ctx.fill();
 }
 
-// ------------------------------
 // HUD
-// ------------------------------
 function drawHUD() {
   ctx.fillStyle = "#000";
   ctx.font = "18px Arial";
@@ -507,9 +529,7 @@ function drawHUD() {
   ctx.fillText("Difficulty: " + difficulty, WIDTH / 2 - 40, 80);
 }
 
-// ------------------------------
-// GAME LOOP
-// ------------------------------
+// Game loop
 function gameLoop() {
   updateInput();
 
